@@ -1,5 +1,74 @@
-node_modules
-.env
-dist
-build
-*.log
+# node_modules
+# .env
+# dist
+# build
+# *.log
+
+
+
+# Frontend Dependencies
+frontend/node_modules
+
+# Backend Dependencies
+backend/node_modules
+
+# Frontend Build Output
+frontend/dist
+frontend/dist-ssr
+frontend/build
+
+# Backend Build Artifacts
+backend/dist
+backend/build
+
+# Environment Variables
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+backend/.env
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+
+# Logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/pnpm-debug.log*
+backend/logs
+
+# Editor Directories and Files
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Frontend Testing
+frontend/coverage
+
+# Backend Database
+backend/*.sql
+backend/*.sqlite
+
+# Miscellaneous
+*.bak
+*.gho
+*.orig
+*.tmp
