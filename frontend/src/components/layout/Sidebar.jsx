@@ -63,10 +63,10 @@ export function Sidebar({ collapsed, onToggle, currentView, onViewChange }) {
     { id: 'inventory', label: 'Inventory', icon: Package, roles: ['admin', 'staff'] },
     { id: 'staff', label: 'Staff Management', icon: UserCheck, roles: ['admin'] },
     { id: 'user-approvals', label: 'User Approvals', icon: UserPlus, roles: ['admin'], isAdminOnly: true },
-    { id: 'billing', label: 'Billing', icon: CreditCard, roles: ['admin', 'staff'] },
+    // { id: 'billing', label: 'Billing', icon: CreditCard, roles: ['admin', 'staff'] },
     { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'doctor'] },
     { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'doctor', 'nurse', 'staff'] },
-    { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin', 'doctor', 'nurse', 'staff'] }
+    // { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin', 'doctor', 'nurse', 'staff'] }
   ];
 
   const filteredMenuItems = menuItems.filter(item => 

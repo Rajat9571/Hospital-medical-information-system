@@ -101,7 +101,16 @@ export function AppointmentManagement() {
         axios.get('http://localhost:5001/api/patients'),
         axios.get('http://localhost:5001/api/doctors')
       ]);
-      setAppointments(apptRes.data || []);
+
+      setAppointments(
+  (apptRes.data || []).map(a => ({
+    ...a,
+    patientName: a.Patient?.name || "Unknown",
+    patientEmail: a.Patient?.email || "",
+    doctorName: a.doctor?.name || "Unassigned"
+  }))
+);
+
       setPatients(patRes.data || []);
       setDoctors(docRes.data || []); // take all doctors returned by backend
 
@@ -305,12 +314,16 @@ export function AppointmentManagement() {
   };
 
   const filteredAppointments = appointments.filter(appt => {
-    const matchesSearch = appt.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          appt.doctorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          appt.department?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDate = selectedDate ? appt.date === selectedDate.toISOString().split('T')[0] : true;
-    return matchesSearch && matchesDate;
-  });
+  const matchesSearch = appt.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        appt.doctorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        appt.department?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const today = new Date().toISOString().split('T')[0];
+  const matchesDate = appt.date >= today; // show only today or later
+
+  return matchesSearch && matchesDate;
+});
+
 
   return (
     <div className="space-y-6">

@@ -2,7 +2,6 @@
 
 // models/Patient.js
 const { DataTypes } = require('sequelize');
-// const sequelize = require('../index').sequelize;
 const sequelize = require('../utils/db');
 
 

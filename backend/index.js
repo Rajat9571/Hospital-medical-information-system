@@ -12,6 +12,8 @@ const appointmentRoutes = require('./routes/appointments');
 const doctorsRoutes = require('./routes/doctors');
 //registration
 const registrationRoutes = require('./routes/registration');
+//pharmacy
+const Medication = require('./models/Medication');
 
 
 
@@ -56,6 +58,26 @@ app.use('/api/doctors', doctorsRoutes);
 
 // Add registration routes
 app.use('/api/registrations', registrationRoutes);
+
+//Manage Pharmacy
+app.use('/api/pharmacy', require('./routes/pharmacy'));
+
+// Sync the medications table (creates if not exists)
+Medication.sync({ alter: true })
+  .then(() => console.log('✅ Medications table synced/created'))
+  .catch(err => console.error('❌ Error syncing Medications table:', err));
+
+//inventory management
+// Inventory management
+app.use('/api/inventory', require('./routes/inventory'));
+//Bed Management 
+app.use('/api/beds', require('./routes/beds'));
+
+
+
+
+
+
 
 
 // Health check endpoint
