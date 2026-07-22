@@ -25,6 +25,7 @@ import yaml
 
 BASE_URL = os.environ.get("CODEVERIFY_BASE_URL", "https://staging.aidoos.com").rstrip("/")
 API = f"{BASE_URL}/aidoos/api/v1/codeverify"
+REFRESH_URL = f"{BASE_URL}/aidoos/api/v1/refresh/"
 CONFIG_PATH = os.environ.get("CODEVERIFY_CONFIG", ".codeverify.yml")
 POLL_INTERVAL_SECONDS = 5
 INDEX_TIMEOUT_SECONDS = 300
@@ -33,6 +34,27 @@ VERIFY_TIMEOUT_SECONDS = 300
 EXIT_OK = 0
 EXIT_NOT_SATISFIED = 1
 EXIT_CONFIG_ERROR = 2
+
+
+def get_access_token() -> str:
+    """The verification engine requires a logged-in user. CI has no browser
+    to complete the email-OTP login, so it reuses a long-lived refresh token
+    (stored as the CODEVERIFY_REFRESH_TOKEN secret, minted once via a manual
+    OTP login) to mint a fresh 15-minute access token on every run."""
+    refresh_token = os.environ.get("CODEVERIFY_REFRESH_TOKEN")
+    if not refresh_token:
+        print("codeverify: CODEVERIFY_REFRESH_TOKEN env var not set.", file=sys.stderr)
+        raise SystemExit(EXIT_CONFIG_ERROR)
+    # Debug only: length/shape, never the token value itself -- catches a
+    # secret saved with stray whitespace/newlines without leaking it.
+    print(f"codeverify: refresh token present, length={len(refresh_token)}, dot_count={refresh_token.count('.')}", file=sys.stderr)
+    resp = requests.post(REFRESH_URL, json={"refresh_token": refresh_token}, timeout=30)
+    print(f"codeverify: refresh endpoint responded {resp.status_code}", file=sys.stderr)
+    if resp.status_code != 200:
+        print(f"codeverify: failed to refresh access token ({resp.status_code}): {resp.text}", file=sys.stderr)
+        print("codeverify: the refresh token has likely expired (7-day lifetime) -- log in again and rotate the secret.", file=sys.stderr)
+        raise SystemExit(EXIT_CONFIG_ERROR)
+    return resp.json()["access_token"]
 
 
 def load_config(path: str) -> tuple[list[str], float]:
@@ -56,18 +78,18 @@ def load_config(path: str) -> tuple[list[str], float]:
     return tasks, float(threshold)
 
 
-def start_indexing(repo_url: str) -> str:
-    resp = requests.post(f"{API}/verify-from-public-github/", json={"repo_url": repo_url}, timeout=30)
+def start_indexing(session: requests.Session, repo_url: str) -> str:
+    resp = session.post(f"{API}/verify-from-public-github/", json={"repo_url": repo_url}, timeout=30)
     if resp.status_code != 201:
         print(f"codeverify: failed to start indexing ({resp.status_code}): {resp.text}", file=sys.stderr)
         raise SystemExit(EXIT_CONFIG_ERROR)
     return resp.json()["codebase_id"]
 
 
-def wait_for_index(codebase_id: str) -> None:
+def wait_for_index(session: requests.Session, codebase_id: str) -> None:
     deadline = time.time() + INDEX_TIMEOUT_SECONDS
     while time.time() < deadline:
-        resp = requests.get(f"{API}/codebase/{codebase_id}/status/", timeout=30)
+        resp = session.get(f"{API}/codebase/{codebase_id}/status/", timeout=30)
         resp.raise_for_status()
         data = resp.json()
         status = data.get("status")
@@ -81,18 +103,18 @@ def wait_for_index(codebase_id: str) -> None:
     raise SystemExit(EXIT_CONFIG_ERROR)
 
 
-def start_verification(codebase_id: str, tasks: list[str]) -> str:
-    resp = requests.post(f"{API}/verify/", json={"codebase_id": codebase_id, "tasks": tasks}, timeout=30)
+def start_verification(session: requests.Session, codebase_id: str, tasks: list[str]) -> str:
+    resp = session.post(f"{API}/verify/", json={"codebase_id": codebase_id, "tasks": tasks}, timeout=30)
     if resp.status_code != 201:
         print(f"codeverify: failed to start verification ({resp.status_code}): {resp.text}", file=sys.stderr)
         raise SystemExit(EXIT_CONFIG_ERROR)
     return resp.json()["run_id"]
 
 
-def wait_for_verdict(run_id: str) -> dict:
+def wait_for_verdict(session: requests.Session, run_id: str) -> dict:
     deadline = time.time() + VERIFY_TIMEOUT_SECONDS
     while time.time() < deadline:
-        resp = requests.get(f"{API}/verify/{run_id}/status/", timeout=30)
+        resp = session.get(f"{API}/verify/{run_id}/status/", timeout=30)
         resp.raise_for_status()
         data = resp.json()
         if data.get("status") == "completed":
@@ -115,13 +137,18 @@ def main() -> None:
     tasks, pass_threshold = load_config(CONFIG_PATH)
     print(f"codeverify: verifying {len(tasks)} task(s) against {repo_url} (pass threshold={pass_threshold:.0f}%)")
 
-    codebase_id = start_indexing(repo_url)
-    print(f"codeverify: indexing codebase={codebase_id} ...")
-    wait_for_index(codebase_id)
+    access_token = get_access_token()
+    print(f"codeverify: got access token, length={len(access_token)}", file=sys.stderr)
+    session = requests.Session()
+    session.headers["Authorization"] = f"Bearer {access_token}"
 
-    run_id = start_verification(codebase_id, tasks)
+    codebase_id = start_indexing(session, repo_url)
+    print(f"codeverify: indexing codebase={codebase_id} ...")
+    wait_for_index(session, codebase_id)
+
+    run_id = start_verification(session, codebase_id, tasks)
     print(f"codeverify: running verification run={run_id} ...")
-    result = wait_for_verdict(run_id)
+    result = wait_for_verdict(session, run_id)
 
     for task in result["tasks"]:
         marker = {"done": "done:   ", "partial": "partial:", "not_done": "MISSING:"}.get(task["status"], "?:")
