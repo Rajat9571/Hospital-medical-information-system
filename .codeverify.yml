@@ -1,0 +1,16 @@
+# Task list for the codeverify CI/CD gate.
+# Every push/PR re-checks the current code against this list using the
+# codeverify AI engine (staging.aidoos.com) -- not a static keyword search.
+# Edit this file when the project's requirements change; you do not need
+# to touch it on every push.
+
+# Percentage of tasks that must come back "done" for the pipeline to pass
+# (0-100). "partial" verdicts count as half a task done. Defaults to 100
+# (every task must be done) if omitted.
+pass_threshold: 80
+
+tasks:
+  - "Patients can be added, updated, and searched by hospital staff (Patient CRUD)."
+  - "Appointments can be booked, updated, and cancelled/deleted, not just created."
+  - "New user registrations require admin approval before the account becomes active."
+  - "Patients can pay their hospital bills online through an integrated payment gateway."
